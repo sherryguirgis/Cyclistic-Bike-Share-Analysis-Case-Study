@@ -1,8 +1,10 @@
+
 # Cyclistic Bike-Share Analysis Case Study
 
 ## 📄 Overview
-This project analyzes Cyclistic’s bike-share data to explore differences between **annual members** and **casual riders**.  
-The goal is to identify behavioral patterns and recommend strategies to convert casual riders into members.
+This project analyzes Cyclistic’s bike-share data to explore behavioral differences between annual members and casual riders.
+The analysis covers data from November 2024 to October 2025, focusing on ride frequency, duration, bike types, and seasonal trends.
+The main goal is to identify usage patterns and provide data-driven recommendations that can help the company convert casual riders into annual members through targeted marketing strategies.
 
 ## 🧠 Key Findings
 - Members ride more frequently and consistently year-round.  
@@ -18,7 +20,6 @@ The goal is to identify behavioral patterns and recommend strategies to convert 
 ## 📁 Files
 - `Cyclistic-bike-share-analysis-case-study.Rmd` — full analysis code  
 - `Cyclistic-bike-share-analysis-case-study.html` — knitted report  
-- (Optional) `cleaned_trips_sample.csv` — sample dataset  
 
 ## 📈 Results
 The analysis supports targeted marketing strategies, including:
