@@ -1,0 +1,287 @@
+#Download the needed Packages
+library("tidyverse")
+library("ggplot2")
+library("readr")
+library("lubridate")
+library("dplyr")
+library("readxl")
+library('scales')
+
+
+#Get the needed sheets and setting the working directory
+setwd("C:\\Users\\Enter Computer\\OneDrive\\Documents\\binaries")
+
+file112024 <- read_excel("202411-divvy-tripdata.xlsx", sheet = "202411-divvy-tripdata")
+file122024 <- read_excel("202412-divvy-tripdata.xlsx", sheet = "202412-divvy-tripdata")
+file012025 <- read_excel("202501-divvy-tripdata.xlsx", sheet = "202501-divvy-tripdata")
+file022025 <- read_excel("202502-divvy-tripdata.xlsx", sheet = "202502-divvy-tripdata")
+file032025 <- read_excel("202503-divvy-tripdata.xlsx", sheet = "202503-divvy-tripdata")
+file042025 <- read_excel("202504-divvy-tripdata.xlsx", sheet = "202504-divvy-tripdata")
+file052025 <- read_excel("202505-divvy-tripdata.xlsx", sheet = "202505-divvy-tripdata")
+file062025 <- read_excel("202506-divvy-tripdata.xlsx", sheet = "202506-divvy-tripdata")
+file072025 <- read_excel("202507-divvy-tripdata.xlsx", sheet = "202507-divvy-tripdata")
+file082025 <- read_excel("202508-divvy-tripdata.xlsx", sheet = "202508-divvy-tripdata")
+file092025 <- read_excel("202509-divvy-tripdata.xlsx", sheet = "202509-divvy-tripdata")
+file102025 <- read_excel("202510-divvy-tripdata.xlsx", sheet = "202510-divvy-tripdata")
+
+#Merging all files into one
+trips_data <- bind_rows(file112024, file122024, file012025, file022025, file032025, file042025, file052025, file062025, file072025, file082025, file092025, file102025)
+
+#Convert started_at to proper datetime if not already done
+trips_data$started_at <- as.POSIXct(trips_data$started_at, format = "%m-%d-%Y %H:%M")
+
+#Create separate columns
+trips_data$date <- format(trips_data$started_at, "%m-%d-%Y")
+trips_data$time <- format(trips_data$started_at, "%H:%M")
+
+#Remove Trip_Length Column
+trips_data$Trip_Length <- NULL
+
+#Calculate the trip length
+trips_data$trip_length_mins <- as.numeric(
+  difftime(trips_data$ended_at, trips_data$started_at, units = "mins")
+)
+
+#Some trips end the next day which gives negative values
+trips_data$trip_length_mins <- ifelse(
+  trips_data$trip_length_mins < 0,
+  trips_data$trip_length_mins + 24*60,  # add 24 hours in minutes
+  trips_data$trip_length_mins
+)
+
+#Extract month and weekday names
+trips_data$month_name <- format(trips_data$started_at, "%B")
+trips_data$weekday_name <- format(trips_data$started_at, "%A")
+
+#To make sure data is correct
+unique(trips_data$rideable_type)
+unique(trips_data$member_casual)
+drop_na(trips_data)
+
+#Data shown is "electric_bike" "classic_bike"  for rideable type and "member" "casual" for member_casual (correct).
+ #Filter for trips that are less than 0 minutes
+filter(trips_data, trip_length_mins < 0) #no points were below zero
+
+#Calculate number of rides, Avg & Max trip length per member type for each month
+
+rides_per_month <- trips_data %>%
+  group_by(member_casual, month_name) %>%
+  summarise(num_rides = n(), max_ride = max(trip_length_mins), average_trip_length = mean(trip_length_mins))
+
+#To arrange month names
+rides_per_month$month_name <- factor(
+  rides_per_month$month_name,
+  levels = month.name
+)
+
+#to visualize
+## Number of rides 
+ggplot(rides_per_month, aes(x = month_name, y = num_rides, fill = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Number of Rides per Member Type by Month",
+    x = "Month",
+    y = "Number of Rides",
+    fill = "Member Type"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+## Maximum ride length
+ggplot(rides_per_month, aes(x = month_name, y = max_ride, fill = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Maximum Length of Rides per Member Type by Month",
+    x = "Month",
+    y = "Ride Length (Minutes)",
+    fill = "Member Type"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+##Average trip length
+ggplot(rides_per_month, aes(x = month_name, y = average_trip_length, fill = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Average Length of Rides per Member Type by Month",
+    x = "Month",
+    y = "Ride Length (Minutes)",
+    fill = "Member Type"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#Calculating Number of rides per bike ride for members every month
+bike_type_per_month <- trips_data %>% 
+  group_by(rideable_type, month_name, member_casual) %>% 
+  filter(member_casual == 'member') %>% 
+  summarise(number_per_bike_type = n())
+
+#To arrange month names
+bike_type_per_month$month_name <- factor(
+  bike_type_per_month$month_name,
+  levels = month.name
+)
+
+#to visualize
+## Number of rides / rideable type for members
+ggplot(bike_type_per_month, aes(x = month_name, y = number_per_bike_type, fill = rideable_type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Member Riders Number of Rides per Bike Type by Month",
+    x = "Month",
+    y = "Number of Rides",
+    fill = "Bike Type"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#Calculating Number of rides per bike ride for casual riders every month
+bike_type_per_month <- trips_data %>% 
+  group_by(rideable_type, month_name, member_casual) %>% 
+  filter(member_casual == 'casual') %>% 
+  summarise(number_per_bike_type = n())
+
+#To arrange month names
+bike_type_per_month$month_name <- factor(
+  bike_type_per_month$month_name,
+  levels = month.name
+)
+
+#to visualize
+## Number of rides / rideable type for casual riders
+ggplot(bike_type_per_month, aes(x = month_name, y = number_per_bike_type, fill = rideable_type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Casual Riders Number of Rides per Bike Type by Month",
+    x = "Month",
+    y = "Number of Rides",
+    fill = "Bike Type"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#Stats per weekday
+weekday_trips <- trips_data %>% 
+  group_by(weekday_name, member_casual) %>% 
+  summarise(weekday_trip_no = n(), avg_weekday_trip = mean(trip_length_mins), max_weekday_trip = max(trip_length_mins))
+
+#to arrange weekdays
+weekday_trips$weekday_name <- factor(weekday_trips$weekday_name,
+                                  levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"))
+
+##to visualize
+###Number of rides
+ggplot(weekday_trips, aes(x = weekday_name,y = weekday_trip_no, fill = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Number of Rides per Member Type by Weekday",
+    x = "Weekday",
+    y = "Number of Rides",
+    fill = "Member Type"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+##Averange trip length
+
+ggplot(weekday_trips, aes(x = weekday_name,y = avg_weekday_trip, fill = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Average Trip Length per Member Type by Weekday",
+    x = "Weekday",
+    y = "Trip Length (minutes)",
+    fill = "Member Type"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+##maximum trip length
+#to arrange weekdays
+
+ggplot(weekday_trips, aes(x = weekday_name,y = max_weekday_trip, fill = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Maximum Trip Length per Member Type by Weekday",
+    x = "Weekday",
+    y = "Trip Length (minutes)",
+    fill = "Member Type"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#Stats per season
+summer_trips <- trips_data %>% 
+  filter (month_name %in% c("June", "July", "August")) %>% 
+  group_by(member_casual, month_name) %>% 
+  summarise(number_of_rides = n(), avg_duration = mean(trip_length_mins), max_trip_duration = max(trip_length_mins)) %>% 
+  mutate(season = "Summer")
+
+fall_trips <- trips_data %>% 
+  filter (month_name %in% c("September", "October", "November")) %>% 
+  group_by(member_casual, month_name) %>% 
+  summarise(number_of_rides = n(), avg_duration = mean(trip_length_mins), max_trip_duration = max(trip_length_mins)) %>% 
+  mutate(season = "Fall")
+
+winter_trips <- trips_data %>% 
+  filter (month_name %in% c("December", "January", "February")) %>% 
+  group_by(member_casual, month_name) %>% 
+  summarise(number_of_rides = n(), avg_duration = mean(trip_length_mins), max_trip_duration = max(trip_length_mins)) %>% 
+  mutate(season = "Winter")
+
+spring_trips <- trips_data %>% 
+  filter (month_name %in% c("March", "April", "May")) %>% 
+  group_by(member_casual, month_name) %>% 
+  summarise(number_of_rides = n(), avg_duration = mean(trip_length_mins), max_trip_duration = max(trip_length_mins)) %>% 
+  mutate(season = "Spring")
+
+###Combine them all into one dataset
+seasonal_summary <- bind_rows(summer_trips, fall_trips, winter_trips, spring_trips)
+
+rides_per_season <- seasonal_summary %>%
+  group_by(member_casual, season) %>%
+  summarise( number_of_rides = sum(number_of_rides), avg_duration = mean(avg_duration))
+
+# Create the plot
+rides_per_season$season <- factor(rides_per_season$season,
+                                  levels = c("Winter", "Spring", "Summer", "Fall"))
+
+ggplot(rides_per_season, aes(x = season, y = number_of_rides, fill = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Number of Rides per Season by Member Type",
+    x = "Season",
+    y = "Number of Rides",
+    fill = "Member Type"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(size = 12),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
+  )
+
+#number of rides / season
+total_rides_per_season <- seasonal_summary %>%
+  group_by(season) %>%
+  summarise( total_number_of_rides = sum(number_of_rides), avg_duration = mean(avg_duration))
+
+ggplot(total_rides_per_season, aes(x = "", y = total_number_of_rides, fill = season)) +
+  geom_bar(stat = "identity", width = 1) +       # basic bar for pie
+  coord_polar(theta = "y") +                    # convert to pie chart
+  scale_fill_brewer(palette = "Set2") +         # nice colors
+  labs(
+    title = "Total Number of Rides per Season",
+    fill = "Season"
+  ) +
+  theme_void() +                                # remove background and axes
+  geom_text(aes(label = scales::comma(total_number_of_rides)),
+            position = position_stack(vjust = 0.5))
