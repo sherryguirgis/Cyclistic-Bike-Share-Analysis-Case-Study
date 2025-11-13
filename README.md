@@ -19,7 +19,8 @@ The main goal is to identify usage patterns and provide data-driven recommendati
 
 ## 📁 Files
 - `Cyclistic-bike-share-analysis-case-study.Rmd` — full analysis code  
-- `Cyclistic-bike-share-analysis-case-study.html` — knitted report  
+- `Cyclistic-bike-share-analysis-case-study.html` — knitted report
+- `Cyclistic-bike-share-analysis-case-study.pdf` — knitted report   
 
 ## 📈 Results
 The analysis supports targeted marketing strategies, including:
